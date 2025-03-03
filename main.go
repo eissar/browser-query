@@ -67,7 +67,9 @@ func HandleSSE(c echo.Context) error {
 }
 
 // every five minutes, check if there are clients gt than max_Clients
-func TrimClients() {}
+func TrimClients() {
+	panic("test")
+}
 
 func main() {
 	server := echo.New()
