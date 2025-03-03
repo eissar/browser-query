@@ -1,4 +1,4 @@
-module github.com/eissar/browserSSE
+module github.com/eissar/browser-query
 
 go 1.24.0
 
