@@ -101,7 +101,7 @@ type TabInfoCallback func(c echo.Context, t []TabInfo)
 
 // handler for response from client
 func UploadTabs(c echo.Context) error {
-	//c.Response().Header().Set("Access-Control-Allow-Origin", "*")
+	c.Response().Header().Set("Access-Control-Allow-Origin", "*")
 
 	var tabs []TabInfo
 	a := c.Request().Body
