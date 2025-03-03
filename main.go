@@ -6,13 +6,15 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/eissar/nest/sse"
 	"github.com/labstack/echo/v4"
 )
 
-type Client struct {
-	Conn http.ResponseWriter
-	Ch   chan string
-}
+//	type Client struct {
+//		Conn http.ResponseWriter
+//		Ch   chan string
+//	}
+type Client sse.Client
 
 var (
 	clientsMu sync.RWMutex
@@ -101,7 +103,7 @@ type TabInfoCallback func(c echo.Context, t []TabInfo)
 
 // handler for response from client
 func UploadTabs(c echo.Context) error {
-	//c.Response().Header().Set("Access-Control-Allow-Origin", "*")
+	c.Response().Header().Set("Access-Control-Allow-Origin", "*")
 
 	var tabs []TabInfo
 	a := c.Request().Body
@@ -125,12 +127,12 @@ func UploadCount(c echo.Context) error {
 }
 
 // creates closure to handle tabs response from client
-func UploadTabsHandler(c echo.Context, callback TabInfoCallback) echo.HandlerFunc {
+func UploadTabsHandler(callback TabInfoCallback) echo.HandlerFunc {
 	// handler for response from client
 	//
 	// TabInfoCallback func(c echo.Context, t TabInfo)
 	//
-	return (func(c echo.Context) error {
+	return func(c echo.Context) error {
 		var tabs []TabInfo
 		a := c.Request().Body
 		err := json.NewDecoder(a).Decode(&tabs)
@@ -142,6 +144,11 @@ func UploadTabsHandler(c echo.Context, callback TabInfoCallback) echo.HandlerFun
 
 		callback(c, tabs)
 		return c.String(200, "OK")
-	})
+	}
 
+}
+
+func RegisterRootRoutes(server *echo.Echo) {
+	server.GET("/eagleApp/sse", HandleSSE)
+	server.POST("/api/uploadTabs", UploadTabs)
 }
