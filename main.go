@@ -3,17 +3,11 @@ package browserQuery
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
-	"os/exec"
-	"runtime"
 	"sync"
 
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 )
-
-var COUNT_TABS = 0
 
 type Client struct {
 	Conn http.ResponseWriter
@@ -71,25 +65,6 @@ func TrimClients() {
 	panic("test")
 }
 
-func main() {
-	server := echo.New()
-
-	// CORS middleware with custom configuration
-	server.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins:     []string{"*"}, // Or specific origins
-		AllowMethods:     []string{echo.GET, echo.HEAD, echo.PUT, echo.PATCH, echo.POST, echo.DELETE, echo.OPTIONS},
-		AllowHeaders:     []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization},
-		AllowCredentials: true,
-	}))
-
-	//server.GET("/sse", HandleSSE)
-	server.POST("/upload", UploadTabs)
-	server.GET("/upload/count", UploadCount)
-
-	server.Start(":53891")
-}
-
-// -- //
 type TabInfo struct {
 	Active          bool        `json:"active"`
 	Attention       bool        `json:"attention"`
@@ -122,12 +97,12 @@ type TabInfo struct {
 	WindowId       int    `json:"windowId"`
 }
 
-type uploadTabsBody struct {
-	Body string `json:"body"`
-}
+type TabInfoCallback func(c echo.Context, t []TabInfo)
 
+// handler for response from client
 func UploadTabs(c echo.Context) error {
-	c.Response().Header().Set("Access-Control-Allow-Origin", "*")
+	//c.Response().Header().Set("Access-Control-Allow-Origin", "*")
+
 	var tabs []TabInfo
 	a := c.Request().Body
 	err := json.NewDecoder(a).Decode(&tabs)
@@ -135,7 +110,6 @@ func UploadTabs(c echo.Context) error {
 		fmt.Println("[ERROR]", err.Error())
 		return c.String(400, "NO")
 	}
-	COUNT_TABS = len(tabs)
 	fmt.Println("[SUCCESS]", len(tabs))
 	return c.String(200, "OK")
 }
@@ -146,16 +120,28 @@ func UploadCount(c echo.Context) error {
 		return c.String(400, "invalid query parameter `count`")
 	}
 
-	SendToRainmeter(cnt)
 	fmt.Println("[SUCCESS]", cnt)
 	return c.String(200, "OK")
 }
 
-func SendToRainmeter(cnt string) {
-	cmd := exec.Command("Rainmeter.exe", "!SetVariable", "TabsCount", cnt, "Tabs")
-	err := cmd.Run()
-	if err != nil {
-		log.Fatalf("%s", err.Error())
-	}
-	//Rainmeter.exe !SetVariable TabsCount "4" "illustro\Clock - Copy"
+// creates closure to handle tabs response from client
+func UploadTabsHandler(c echo.Context, callback TabInfoCallback) echo.HandlerFunc {
+	// handler for response from client
+	//
+	// TabInfoCallback func(c echo.Context, t TabInfo)
+	//
+	return (func(c echo.Context) error {
+		var tabs []TabInfo
+		a := c.Request().Body
+		err := json.NewDecoder(a).Decode(&tabs)
+		if err != nil {
+			fmt.Println("[ERROR]", err.Error())
+			return c.String(400, "NO")
+		}
+		fmt.Println("[SUCCESS]", len(tabs))
+
+		callback(c, tabs)
+		return c.String(200, "OK")
+	})
+
 }
